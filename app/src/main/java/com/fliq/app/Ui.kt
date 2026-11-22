@@ -9,7 +9,9 @@ import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.view.Gravity
 import android.view.View
+import android.text.InputType
 import android.view.WindowInsets
+import android.widget.EditText
 import android.widget.TextView
 import kotlin.math.roundToInt
 
@@ -30,6 +32,30 @@ fun Context.tv(s: String, sp: Float, color: Int, bold: Boolean = false): TextVie
         textSize = sp
         setTextColor(color)
         if (bold) typeface = Typeface.DEFAULT_BOLD
+    }
+
+fun Context.label(s: String): TextView = tv(s, 12f, MUTED).apply {
+    setPadding(0, dp(26), 0, dp(8))
+    letterSpacing = 0.08f
+    isAllCaps = true
+}
+
+/** Single-line text box in the app's style. [inputType] is an android.text.InputType value. */
+fun Context.input(hintText: String, value: String, inputType: Int): EditText =
+    EditText(this).apply {
+        setText(value)
+        hint = hintText
+        setTextColor(FG)
+        setHintTextColor(MUTED)
+        textSize = 15f
+        maxLines = 1
+        this.inputType = inputType
+        setPadding(dp(14), dp(12), dp(14), dp(12))
+        background = GradientDrawable().apply {
+            cornerRadius = dp(10).toFloat()
+            setColor(CARD)
+            setStroke(dp(1), LINE)
+        }
     }
 
 /** Flat rounded button: outlined, or filled when [filled]. */

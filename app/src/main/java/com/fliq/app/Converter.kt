@@ -29,7 +29,8 @@ enum class Target(val label: String, val ext: String, val mime: String) {
     PNG("PNG", "png", "image/png"),
     WEBP("WebP", "webp", "image/webp"),
     BMP("BMP", "bmp", "image/bmp"),
-    PDF("PDF", "pdf", "application/pdf")
+    PDF("PDF", "pdf", "application/pdf"),
+    DOCX("Word", "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 }
 
 /**
@@ -45,14 +46,20 @@ object Converter {
     fun targetsFor(srcs: List<Src>): List<Target> {
         if (srcs.isEmpty()) return emptyList()
         return when {
-            srcs.all { it.kind == Kind.PDF } -> listOf(Target.PNG, Target.JPG, Target.WEBP)
+            srcs.all { it.kind == Kind.PDF } -> listOf(Target.PNG, Target.JPG, Target.WEBP, Target.DOCX)
+            srcs.all { it.kind == Kind.OFFICE } -> listOf(Target.PDF)
             srcs.all { it.kind == Kind.IMAGE || it.kind == Kind.SVG } -> {
                 val exts = srcs.map { normExt(it.ext) }.distinct()
-                Target.values().filter { t -> !(exts.size == 1 && exts[0] == t.ext) }
+                listOf(Target.JPG, Target.PNG, Target.WEBP, Target.BMP, Target.PDF)
+                    .filter { t -> !(exts.size == 1 && exts[0] == t.ext) }
             }
             else -> emptyList()
         }
     }
+
+    /** True when some of the offered conversions go through the converter server. */
+    fun needsServer(srcs: List<Src>): Boolean =
+        srcs.isNotEmpty() && (srcs.any { it.kind == Kind.OFFICE } || srcs.all { it.kind == Kind.PDF })
 
     private fun normExt(e: String): String =
         e.lowercase(Locale.ROOT).let { if (it == "jpeg") "jpg" else it }
@@ -60,7 +67,13 @@ object Converter {
     /** Converts and saves next to each original. [progress] gets (done, total). */
     fun convert(ctx: Context, srcs: List<Src>, t: Target, progress: (Int, Int) -> Unit): List<Saved> {
         val out = ArrayList<Saved>()
-        if (srcs.all { it.kind == Kind.PDF }) {
+        if (t == Target.DOCX || srcs.all { it.kind == Kind.OFFICE }) {
+            // Word/Excel/PowerPoint -> PDF and PDF -> Word go through the converter server.
+            srcs.forEachIndexed { i, s ->
+                progress(i, srcs.size)
+                out += Saver.save(ctx, s.dir, s.base + "." + t.ext, t.mime) { os -> Remote.convert(ctx, s, t.ext, os) }
+            }
+        } else if (srcs.all { it.kind == Kind.PDF }) {
             srcs.forEach { out += pdfToImages(ctx, it, t, progress) }
         } else if (t == Target.PDF) {
             val base = if (srcs.size > 1) srcs[0].base + "_merged" else srcs[0].base
@@ -151,7 +164,7 @@ object Converter {
                 if (!bmp.compress(f, 90, os)) throw IOException("WebP encode failed")
             }
             Target.BMP -> writeBmp(bmp, os)
-            Target.PDF -> throw IllegalStateException("PDF is written separately")
+            Target.PDF, Target.DOCX -> throw IllegalStateException("${t.label} is not an image format")
         }
     }
 

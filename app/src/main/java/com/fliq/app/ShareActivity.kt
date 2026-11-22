@@ -84,11 +84,16 @@ class ShareActivity : Activity() {
         col.addView(sectionLabel("Convert to"))
         val targets = Converter.targetsFor(srcs)
         if (targets.isEmpty()) {
-            col.addView(tv("No conversion for this file type yet. Word, Excel and PowerPoint are planned.", 13f, MUTED))
+            col.addView(tv("No conversion for this file type yet.", 13f, MUTED))
         } else {
+            val merge = srcs.size > 1 && srcs.none { it.kind == Kind.OFFICE }
             col.addView(row(targets.map { t ->
-                pill(if (t == Target.PDF && srcs.size > 1) "Merge PDF" else t.label) { convert(t) }
+                pill(if (t == Target.PDF && merge) "Merge PDF" else t.label) { convert(t) }
             }))
+            if (Converter.needsServer(srcs) && !Remote.configured(this)) {
+                col.addView(tv("Word and Office conversion needs a converter server. Open Fliq to set it up.", 12f, MUTED)
+                    .apply { setPadding(0, dp(8), 0, 0) })
+            }
         }
 
         // Rename

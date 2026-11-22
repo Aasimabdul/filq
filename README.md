@@ -15,7 +15,13 @@ and every file or PDF page is processed one at a time and freed straight away.
 | JPG, PNG, WebP, BMP, GIF, HEIC | convert to JPG / PNG / WebP / BMP / PDF (several images can be merged into one PDF) |
 | SVG | PNG / JPG / WebP / BMP / PDF |
 | PDF | pages to PNG / JPG / WebP |
+| PDF | also: PDF to Word (needs the converter server) |
+| Word, Excel, PowerPoint (doc/docx/odt/rtf, xls/xlsx/ods/csv, ppt/pptx/odp) | convert to PDF (needs the converter server) |
 | anything | rename: Clean, snake_case, Date + name, or your own name |
+
+Office conversions can't run offline in a few hundred KB, so the app uploads the file to your own small
+LibreOffice server ([`server/`](server/README.md), free to host) and saves the result back next to the original.
+Everything else stays on the phone. The app only asks for the Internet permission for this.
 
 Converting and renaming both save a **new copy** next to the original; the original is never touched.
 
@@ -31,9 +37,8 @@ If the original folder can't be found or isn't allowed (for example a PDF made f
 
 ## Roadmap
 
-- Word / Excel / PowerPoint conversion (needs a cloud API or a bundled engine; kept out for size)
-- PDF to Word (text only offline)
 - Release signing + GitHub releases
+- Cast receiver (Chrome + DLNA) and the GameCube emulator are separate apps
 
 ## Build
 

@@ -6,7 +6,7 @@ import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import java.util.Locale
 
-enum class Kind { IMAGE, SVG, PDF, OTHER }
+enum class Kind { IMAGE, SVG, PDF, OFFICE, OTHER }
 
 fun extOf(name: String): String {
     val i = name.lastIndexOf('.')
@@ -33,6 +33,7 @@ data class Src(val uri: Uri, val name: String, val mime: String, val size: Long,
             return when {
                 e == "svg" || mime == "image/svg+xml" -> Kind.SVG
                 e == "pdf" || mime == "application/pdf" -> Kind.PDF
+                e in OFFICE_EXT -> Kind.OFFICE
                 e in IMAGE_EXT || mime.startsWith("image/") -> Kind.IMAGE
                 else -> Kind.OTHER
             }
@@ -40,6 +41,7 @@ data class Src(val uri: Uri, val name: String, val mime: String, val size: Long,
 
     companion object {
         private val IMAGE_EXT = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif", "heic", "heif", "avif")
+        private val OFFICE_EXT = setOf("doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "csv", "ppt", "pptx", "odp")
 
         fun query(ctx: Context, uri: Uri): Src {
             var n: String? = null
