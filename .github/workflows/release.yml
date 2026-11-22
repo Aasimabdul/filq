@@ -1,0 +1,55 @@
+name: Release
+
+# Push a tag like v0.2.0 to build a signed APK and publish it on the Releases page.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Secret KEYSTORE_B64 is missing. See 'Releasing' in the README."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/fliq.jks"
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/fliq.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Name and verify the APK
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "Fliq-${GITHUB_REF_NAME}.apk"
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs "Fliq-${GITHUB_REF_NAME}.apk"
+          ls -l "Fliq-${GITHUB_REF_NAME}.apk"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "Fliq-${GITHUB_REF_NAME}.apk" \
+            --title "Fliq ${GITHUB_REF_NAME}" \
+            --notes "Install the APK, then share any file to Fliq. Converted and renamed files are saved next to the original. Word/Excel/PowerPoint conversion needs the converter server (see server/README.md)."

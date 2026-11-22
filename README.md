@@ -40,6 +40,21 @@ If the original folder can't be found or isn't allowed (for example a PDF made f
 - Release signing + GitHub releases
 - Cast receiver (Chrome + DLNA) and the GameCube emulator are separate apps
 
+## Releasing
+
+Pushing a tag builds a signed APK and publishes it on the Releases page. One-time setup:
+
+1. Make your own signing key and **back it up** (if you lose it you can't update the app):
+   ```
+   keytool -genkeypair -v -keystore fliq-release.jks -alias fliq -keyalg RSA -keysize 4096 -validity 10000
+   ```
+2. In the repo go to Settings, Secrets and variables, Actions, and add four secrets:
+   - `KEYSTORE_B64`: output of `base64 -w0 fliq-release.jks`
+   - `KEYSTORE_PASSWORD`: the keystore password
+   - `KEY_ALIAS`: `fliq`
+   - `KEY_PASSWORD`: the key password (same as the keystore password if you pressed Enter)
+3. Release: `git tag v0.2.0 && git push origin v0.2.0`
+
 ## Build
 
 GitHub Actions builds an APK on every push (see the **Actions** tab, artifact `Fliq-debug-apk`).
