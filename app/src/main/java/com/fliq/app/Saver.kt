@@ -13,6 +13,9 @@ import java.io.OutputStream
 /** [sameDir] is false when Android did not let us write next to the original and we used the fallback folder. */
 data class Saved(val uri: Uri, val name: String, val mime: String, val where: String, val sameDir: Boolean)
 
+/** What a background job produced: the saved files, plus "name: reason" for any file that failed. */
+class JobResult(val saved: List<Saved>, val failed: List<String> = emptyList())
+
 /** Finds the folder a shared file lives in, as a MediaStore relative path like "Pictures/Screenshots/". */
 object Place {
     fun dirOf(ctx: Context, uri: Uri): String? {

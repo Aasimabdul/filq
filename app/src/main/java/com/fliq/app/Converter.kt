@@ -43,56 +43,93 @@ object Converter {
     private const val PDF_RENDER_SIDE = 2200
     private const val SVG_SIDE = 2048
 
+    private fun offered(k: Kind): Set<Target> = when (k) {
+        Kind.IMAGE, Kind.SVG -> setOf(Target.JPG, Target.PNG, Target.WEBP, Target.BMP, Target.PDF)
+        Kind.PDF -> setOf(Target.JPG, Target.PNG, Target.WEBP, Target.DOCX)
+        Kind.OFFICE -> setOf(Target.JPG, Target.PNG, Target.WEBP, Target.PDF)
+        Kind.OTHER -> emptySet()
+    }
+
+    /** Formats every selected file can be converted to. A mixed selection gets the common ones (JPG/PNG/WebP). */
     fun targetsFor(srcs: List<Src>): List<Target> {
         if (srcs.isEmpty()) return emptyList()
-        return when {
-            srcs.all { it.kind == Kind.PDF } -> listOf(Target.PNG, Target.JPG, Target.WEBP, Target.DOCX)
-            srcs.all { it.kind == Kind.OFFICE } -> listOf(Target.PDF)
-            srcs.all { it.kind == Kind.IMAGE || it.kind == Kind.SVG } -> {
-                val exts = srcs.map { normExt(it.ext) }.distinct()
-                listOf(Target.JPG, Target.PNG, Target.WEBP, Target.BMP, Target.PDF)
-                    .filter { t -> !(exts.size == 1 && exts[0] == t.ext) }
-            }
-            else -> emptyList()
+        var common: Set<Target> = Target.values().toSet()
+        for (s in srcs) common = common intersect offered(s.kind)
+        return Target.values().filter { t ->
+            t in common && !srcs.all { it.kind == Kind.IMAGE && normExt(it.ext) == t.ext }
         }
     }
 
     /** True when some of the offered conversions go through the converter server. */
-    fun needsServer(srcs: List<Src>): Boolean =
-        srcs.isNotEmpty() && (srcs.any { it.kind == Kind.OFFICE } || srcs.all { it.kind == Kind.PDF })
+    fun needsServer(srcs: List<Src>, targets: List<Target>): Boolean =
+        srcs.any { it.kind == Kind.OFFICE } || Target.DOCX in targets
+
+    /** One PDF from several files is only offered when every file is an image or SVG. */
+    fun canMerge(srcs: List<Src>): Boolean =
+        srcs.size > 1 && srcs.all { it.kind == Kind.IMAGE || it.kind == Kind.SVG }
 
     private fun normExt(e: String): String =
         e.lowercase(Locale.ROOT).let { if (it == "jpeg") "jpg" else it }
 
-    /** Converts and saves next to each original. [progress] gets (done, total). */
-    fun convert(ctx: Context, srcs: List<Src>, t: Target, progress: (Int, Int) -> Unit): List<Saved> {
-        val out = ArrayList<Saved>()
-        if (t == Target.DOCX || srcs.all { it.kind == Kind.OFFICE }) {
-            // Word/Excel/PowerPoint -> PDF and PDF -> Word go through the converter server.
-            srcs.forEachIndexed { i, s ->
-                progress(i, srcs.size)
-                out += Saver.save(ctx, s.dir, s.base + "." + t.ext, t.mime) { os -> Remote.convert(ctx, s, t.ext, os) }
-            }
-        } else if (srcs.all { it.kind == Kind.PDF }) {
-            srcs.forEach { out += pdfToImages(ctx, it, t, progress) }
-        } else if (t == Target.PDF) {
-            val base = if (srcs.size > 1) srcs[0].base + "_merged" else srcs[0].base
-            out += Saver.save(ctx, srcs[0].dir, "$base.pdf", "application/pdf") { os ->
+    private val noProgress: (Int, Int) -> Unit = { _, _ -> }
+
+    /**
+     * Converts every file to [t] and saves each next to its original, one file at a time.
+     * A file that fails is reported but does not stop the others. [merge] makes one PDF from all images.
+     */
+    fun convert(ctx: Context, srcs: List<Src>, t: Target, merge: Boolean, progress: (Int, Int) -> Unit): JobResult {
+        if (merge && t == Target.PDF && canMerge(srcs)) {
+            val one = Saver.save(ctx, srcs[0].dir, srcs[0].base + "_merged.pdf", Target.PDF.mime) { os ->
                 writePdf(ctx, srcs, os, progress)
             }
-        } else {
-            srcs.forEachIndexed { i, s ->
-                progress(i, srcs.size)
-                val bmp = loadBitmap(ctx, s, 0)
-                try {
-                    out += Saver.save(ctx, s.dir, s.base + "." + t.ext, t.mime) { os -> encode(bmp, t, os) }
-                } finally {
-                    bmp.recycle()
-                }
+            return JobResult(listOf(one))
+        }
+        val out = ArrayList<Saved>()
+        val failed = ArrayList<String>()
+        val inner = if (srcs.size == 1) progress else noProgress
+        srcs.forEachIndexed { i, s ->
+            progress(i, srcs.size)
+            try {
+                out += convertOne(ctx, s, t, inner)
+            } catch (e: OutOfMemoryError) {
+                failed += s.name + ": not enough memory"
+            } catch (e: Exception) {
+                failed += s.name + ": " + (e.message ?: "failed")
             }
         }
-        return out
+        return JobResult(out, failed)
     }
+
+    private fun convertOne(ctx: Context, s: Src, t: Target, progress: (Int, Int) -> Unit): List<Saved> =
+        when (s.kind) {
+            Kind.IMAGE, Kind.SVG -> when {
+                s.kind == Kind.IMAGE && normExt(s.ext) == t.ext -> emptyList()  // already in that format
+                t == Target.PDF -> listOf(
+                    Saver.save(ctx, s.dir, s.base + ".pdf", t.mime) { os -> writePdf(ctx, listOf(s), os, noProgress) }
+                )
+                else -> {
+                    val bmp = loadBitmap(ctx, s, 0)
+                    try {
+                        listOf(Saver.save(ctx, s.dir, s.base + "." + t.ext, t.mime) { os -> encode(bmp, t, os) })
+                    } finally {
+                        bmp.recycle()
+                    }
+                }
+            }
+            Kind.PDF ->
+                if (t == Target.DOCX) {
+                    listOf(Saver.save(ctx, s.dir, s.base + ".docx", t.mime) { os -> Remote.convert(ctx, s, "docx", os) })
+                } else {
+                    pdfToImages(ctx, s, t, progress)
+                }
+            Kind.OFFICE ->
+                if (t == Target.PDF) {
+                    listOf(Saver.save(ctx, s.dir, s.base + ".pdf", t.mime) { os -> Remote.convert(ctx, s, "pdf", os) })
+                } else {
+                    officeToImages(ctx, s, t, progress)
+                }
+            Kind.OTHER -> throw IOException("can't convert this file type yet")
+        }
 
     // ---------- loading ----------
 
@@ -278,40 +315,56 @@ object Converter {
     // ---------- PDF -> images (one page in memory at a time) ----------
 
     private fun pdfToImages(ctx: Context, s: Src, t: Target, progress: (Int, Int) -> Unit): List<Saved> {
-        val out = ArrayList<Saved>()
         val tmp = File.createTempFile("fliq_", ".pdf", ctx.cacheDir)
         try {
             (ctx.contentResolver.openInputStream(s.uri) ?: throw IOException("Cannot open file"))
                 .use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
-            val pfd = ParcelFileDescriptor.open(tmp, ParcelFileDescriptor.MODE_READ_ONLY)
-            val renderer = try {
-                PdfRenderer(pfd)
-            } catch (e: SecurityException) {
-                pfd.close()
-                throw IOException("This PDF is password-protected")
-            } catch (e: IOException) {
-                pfd.close()
-                throw IOException("Can't read this PDF")
-            }
-            try {
-                val pages = renderer.pageCount
-                val digits = pages.toString().length
-                for (i in 0 until pages) {
-                    progress(i, pages)
-                    val bmp = renderPage(renderer, i)
-                    try {
-                        val name = s.base + "_p" + (i + 1).toString().padStart(digits, '0') + "." + t.ext
-                        out += Saver.save(ctx, s.dir, name, t.mime) { os -> encode(bmp, t, os) }
-                    } finally {
-                        bmp.recycle()
-                    }
-                }
-            } finally {
-                renderer.close()
-                try { pfd.close() } catch (e: IOException) { }
-            }
+            return pdfFileToImages(ctx, tmp, s, t, progress)
         } finally {
             tmp.delete()
+        }
+    }
+
+    /** Word/Excel/PowerPoint -> PDF on the server (into a temp file), then the pages -> images on the phone. */
+    private fun officeToImages(ctx: Context, s: Src, t: Target, progress: (Int, Int) -> Unit): List<Saved> {
+        val tmp = File.createTempFile("fliq_", ".pdf", ctx.cacheDir)
+        try {
+            tmp.outputStream().use { Remote.convert(ctx, s, "pdf", it) }
+            return pdfFileToImages(ctx, tmp, s, t, progress)
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /** Renders [pdf] page by page; the images are named after [s] and saved next to it. */
+    private fun pdfFileToImages(ctx: Context, pdf: File, s: Src, t: Target, progress: (Int, Int) -> Unit): List<Saved> {
+        val out = ArrayList<Saved>()
+        val pfd = ParcelFileDescriptor.open(pdf, ParcelFileDescriptor.MODE_READ_ONLY)
+        val renderer = try {
+            PdfRenderer(pfd)
+        } catch (e: SecurityException) {
+            pfd.close()
+            throw IOException("This PDF is password-protected")
+        } catch (e: IOException) {
+            pfd.close()
+            throw IOException("Can't read this PDF")
+        }
+        try {
+            val pages = renderer.pageCount
+            val digits = pages.toString().length
+            for (i in 0 until pages) {
+                progress(i, pages)
+                val bmp = renderPage(renderer, i)
+                try {
+                    val name = s.base + "_p" + (i + 1).toString().padStart(digits, '0') + "." + t.ext
+                    out += Saver.save(ctx, s.dir, name, t.mime) { os -> encode(bmp, t, os) }
+                } finally {
+                    bmp.recycle()
+                }
+            }
+        } finally {
+            renderer.close()
+            try { pfd.close() } catch (e: IOException) { }
         }
         return out
     }

@@ -84,13 +84,21 @@ class ShareActivity : Activity() {
         col.addView(sectionLabel("Convert to"))
         val targets = Converter.targetsFor(srcs)
         if (targets.isEmpty()) {
-            col.addView(tv("No conversion for this file type yet.", 13f, MUTED))
+            val msg = if (srcs.size > 1 && srcs.any { it.kind == Kind.OTHER }) {
+                "Some selected files can't be converted yet. Select only images, PDF or Office files."
+            } else {
+                "No conversion for this file type yet."
+            }
+            col.addView(tv(msg, 13f, MUTED))
         } else {
-            val merge = srcs.size > 1 && srcs.none { it.kind == Kind.OFFICE }
-            col.addView(row(targets.map { t ->
-                pill(if (t == Target.PDF && merge) "Merge PDF" else t.label) { convert(t) }
-            }))
-            if (Converter.needsServer(srcs) && !Remote.configured(this)) {
+            val buttons = targets.map { t -> pill(t.label) { convert(t) } }.toMutableList()
+            if (Converter.canMerge(srcs)) buttons.add(pill("Merge PDF") { convert(Target.PDF, true) })
+            buttons.chunked(3).forEach { chunk ->
+                val views = ArrayList<View>(chunk)
+                while (views.size < 3) views.add(View(this))
+                col.addView(row(views).apply { setPadding(0, 0, 0, dp(8)) })
+            }
+            if (Converter.needsServer(srcs, targets) && !Remote.configured(this)) {
                 col.addView(tv("Word and Office conversion needs a converter server. Open Fliq to set it up.", 12f, MUTED)
                     .apply { setPadding(0, dp(8), 0, 0) })
             }
@@ -161,10 +169,11 @@ class ShareActivity : Activity() {
 
     // ---------- actions ----------
 
-    private fun convert(t: Target) = startJob("Converting") { progress -> Converter.convert(this, srcs, t, progress) }
+    private fun convert(t: Target, merge: Boolean = false) =
+        startJob("Converting") { progress -> Converter.convert(this, srcs, t, merge, progress) }
 
     private fun rename(newBase: (Src, Int) -> String) =
-        startJob("Saving") { _ -> Renamer.renameAll(this, srcs, newBase) }
+        startJob("Saving") { _ -> JobResult(Renamer.renameAll(this, srcs, newBase)) }
 
     private fun saveCustom() {
         val base = nameField?.text?.toString()?.trim().orEmpty()
@@ -176,12 +185,12 @@ class ShareActivity : Activity() {
         rename { _, i -> if (multi) "$base ${i + 1}" else base }
     }
 
-    private fun startJob(label: String, job: ((Int, Int) -> Unit) -> List<Saved>) {
+    private fun startJob(label: String, job: ((Int, Int) -> Unit) -> JobResult) {
         if (busy) return
         busy = true
         showWorking(label, 0, 0)
         io.execute {
-            var items: List<Saved>? = null
+            var items: JobResult? = null
             var err: String? = null
             try {
                 items = job { done, total -> runOnUiThread { if (!isDestroyed) showWorking(label, done, total) } }
@@ -195,7 +204,12 @@ class ShareActivity : Activity() {
             runOnUiThread {
                 busy = false
                 if (!isDestroyed) {
-                    if (result != null) showDone(result) else showError(message ?: "Something went wrong")
+                    when {
+                        result == null -> showError(message ?: "Something went wrong")
+                        result.saved.isNotEmpty() -> showDone(result.saved, result.failed)
+                        result.failed.isNotEmpty() -> showError(result.failed.take(3).joinToString("\n"))
+                        else -> showError("Nothing to convert: the files are already in that format.")
+                    }
                 }
             }
         }
@@ -219,7 +233,7 @@ class ShareActivity : Activity() {
         status.addView(tv(msg, 14f, ERR))
     }
 
-    private fun showDone(items: List<Saved>) {
+    private fun showDone(items: List<Saved>, failed: List<String>) {
         status.removeAllViews()
         val first = items.first()
         status.addView(tv("Saved · ${first.where}", 13f, NEON))
@@ -240,6 +254,10 @@ class ShareActivity : Activity() {
             row(listOf(pill("Share all") { share(items) }))
         }
         status.addView(buttons.apply { setPadding(0, dp(12), 0, 0) })
+        if (failed.isNotEmpty()) {
+            status.addView(tv("${failed.size} failed:\n" + failed.take(3).joinToString("\n"), 12f, ERR)
+                .apply { setPadding(0, dp(12), 0, 0) })
+        }
     }
 
     private fun open(s: Saved) {

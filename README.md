@@ -23,6 +23,10 @@ Office conversions can't run offline in a few hundred KB, so the app uploads the
 LibreOffice server ([`server/`](server/README.md), free to host) and saves the result back next to the original.
 Everything else stays on the phone. The app only asks for the Internet permission for this.
 
+**Several files at once:** select many files, share them to Fliq and pick one format. Mixed selections work too:
+images, PDFs and Office files together can all be converted to PNG, JPG or WebP. A file that fails is reported
+and the rest still finish. With several images you also get **Merge PDF** (one PDF) next to **PDF** (one each).
+
 Converting and renaming both save a **new copy** next to the original; the original is never touched.
 
 ## Same-folder saving
