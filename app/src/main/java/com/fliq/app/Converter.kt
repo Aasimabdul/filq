@@ -61,7 +61,7 @@ object Converter {
     }
 
     /** True when some of the offered conversions go through the converter server. */
-    fun needsServer(srcs: List<Src>, targets: List<Target>): Boolean =
+    fun needsServer(srcs: List<Src>): Boolean =
         srcs.any { it.kind == Kind.OFFICE }
 
     /** One PDF from several files is only offered when every file is an image or SVG. */
