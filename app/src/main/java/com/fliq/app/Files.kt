@@ -31,16 +31,22 @@ data class Src(val uri: Uri, val name: String, val mime: String, val size: Long,
         get() {
             val e = ext.lowercase(Locale.ROOT)
             return when {
-                e == "svg" || mime == "image/svg+xml" -> Kind.SVG
-                e == "pdf" || mime == "application/pdf" -> Kind.PDF
+                e == "svg" || mime.equals("image/svg+xml", ignoreCase = true) -> Kind.SVG
+                e == "pdf" || mime.equals("application/pdf", ignoreCase = true) -> Kind.PDF
                 e in OFFICE_EXT -> Kind.OFFICE
-                e in IMAGE_EXT || mime.startsWith("image/") -> Kind.IMAGE
+                e in IMAGE_EXT || mime.startsWith("image/", ignoreCase = true) -> Kind.IMAGE
                 else -> Kind.OTHER
             }
         }
 
     companion object {
-        private val IMAGE_EXT = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif", "heic", "heif", "avif")
+        // Android ImageDecoder handles these common raster formats; actual decoding can
+        // still depend on the OS version/device codec (notably HEIF and AVIF).
+        private val IMAGE_EXT = setOf(
+            "jpg", "jpeg", "jpe", "jfif",
+            "png", "webp", "bmp", "gif",
+            "heic", "heif", "avif"
+        )
         private val OFFICE_EXT = setOf("doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "csv", "ppt", "pptx", "odp")
 
         fun query(ctx: Context, uri: Uri): Src {
@@ -57,7 +63,8 @@ data class Src(val uri: Uri, val name: String, val mime: String, val size: Long,
                         if (si >= 0 && !c.isNull(si)) sz = c.getLong(si)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
+                // Providers may not expose metadata; fall back to the URI and MIME type.
             }
             var name = n ?: uri.lastPathSegment?.substringAfterLast('/') ?: "file"
             val mime = ctx.contentResolver.getType(uri)
