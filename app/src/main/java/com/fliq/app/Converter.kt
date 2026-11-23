@@ -60,10 +60,6 @@ object Converter {
         }
     }
 
-    /** True when some of the offered conversions go through the converter server. */
-    fun needsServer(srcs: List<Src>, targets: List<Target>): Boolean =
-        srcs.any { it.kind == Kind.OFFICE } || Target.DOCX in targets
-
     /** One PDF from several files is only offered when every file is an image or SVG. */
     fun canMerge(srcs: List<Src>): Boolean =
         srcs.size > 1 && srcs.all { it.kind == Kind.IMAGE || it.kind == Kind.SVG }
@@ -118,16 +114,12 @@ object Converter {
             }
             Kind.PDF ->
                 if (t == Target.DOCX) {
-                    listOf(Saver.save(ctx, s.dir, s.base + ".docx", t.mime) { os -> Remote.convert(ctx, s, "docx", os) })
+                    listOf(Saver.save(ctx, s.dir, s.base + ".docx", t.mime) { os -> PdfToDocx.convert(readPdf(ctx, s), os) })
                 } else {
                     pdfToImages(ctx, s, t, progress)
                 }
             Kind.OFFICE ->
-                if (t == Target.PDF) {
-                    listOf(Saver.save(ctx, s.dir, s.base + ".pdf", t.mime) { os -> Remote.convert(ctx, s, "pdf", os) })
-                } else {
-                    officeToImages(ctx, s, t, progress)
-                }
+                if (t == Target.PDF) officeToPdf(ctx, s, t) else officeToImages(ctx, s, t)
             Kind.OTHER -> throw IOException("can't convert this file type yet")
         }
 
@@ -325,14 +317,47 @@ object Converter {
         }
     }
 
-    /** Word/Excel/PowerPoint -> PDF on the server (into a temp file), then the pages -> images on the phone. */
-    private fun officeToImages(ctx: Context, s: Src, t: Target, progress: (Int, Int) -> Unit): List<Saved> {
-        val tmp = File.createTempFile("fliq_", ".pdf", ctx.cacheDir)
+    /** Word / Excel / PowerPoint / CSV / text -> PDF, drawn on the phone (see Office). */
+    private fun officeToPdf(ctx: Context, s: Src, t: Target): List<Saved> {
+        val sink = PdfSink()
         try {
-            tmp.outputStream().use { Remote.convert(ctx, s, "pdf", it) }
-            return pdfFileToImages(ctx, tmp, s, t, progress)
+            Office.render(ctx, s, sink)
+            return listOf(Saver.save(ctx, s.dir, s.base + ".pdf", t.mime) { os -> sink.writeTo(os) })
         } finally {
-            tmp.delete()
+            sink.close()
+        }
+    }
+
+    /** Same pages as images, each saved as soon as it is drawn (one page bitmap in memory at a time). */
+    private fun officeToImages(ctx: Context, s: Src, t: Target): List<Saved> {
+        val out = ArrayList<Saved>()
+        val sink = ImageSink(2f) { bmp, n ->
+            val name = s.base + "_p" + n.toString().padStart(2, '0') + "." + t.ext
+            out += Saver.save(ctx, s.dir, name, t.mime) { os -> encode(bmp, t, os) }
+        }
+        try {
+            Office.render(ctx, s, sink)
+        } finally {
+            sink.close()
+        }
+        return out
+    }
+
+    private const val MAX_PDF_BYTES = 48 * 1024 * 1024
+
+    /** The whole PDF in memory (the text reader needs random access); refused when it is very large. */
+    private fun readPdf(ctx: Context, s: Src): ByteArray {
+        (ctx.contentResolver.openInputStream(s.uri) ?: throw IOException("Cannot open file")).use { i ->
+            if (s.size > MAX_PDF_BYTES) throw IOException("PDF is too big to convert to Word on this phone")
+            val bo = ByteArrayOutputStream(if (s.size > 0) s.size.toInt() else 64 * 1024)
+            val buf = ByteArray(64 * 1024)
+            while (true) {
+                val n = i.read(buf)
+                if (n < 0) break
+                bo.write(buf, 0, n)
+                if (bo.size() > MAX_PDF_BYTES) throw IOException("PDF is too big to convert to Word on this phone")
+            }
+            return bo.toByteArray()
         }
     }
 

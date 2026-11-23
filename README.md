@@ -15,13 +15,21 @@ and every file or PDF page is processed one at a time and freed straight away.
 | JPG, PNG, WebP, BMP, GIF, HEIC | convert to JPG / PNG / WebP / BMP / PDF (several images can be merged into one PDF) |
 | SVG | PNG / JPG / WebP / BMP / PDF |
 | PDF | pages to PNG / JPG / WebP |
-| PDF | also: PDF to Word (needs the converter server) |
-| Word, Excel, PowerPoint (doc/docx/odt/rtf, xls/xlsx/ods/csv, ppt/pptx/odp) | convert to PDF (needs the converter server) |
+| PDF | also: PDF to Word (text only) |
+| Word (docx), Excel (xlsx), PowerPoint (pptx), CSV, TXT | convert to PDF / PNG / JPG / WebP |
 | anything | rename: Clean, snake_case, Date + name, or your own name |
 
-Office conversions can't run offline in a few hundred KB, so the app uploads the file to your own small
-LibreOffice server ([`server/`](server/README.md), free to host) and saves the result back next to the original.
-Everything else stays on the phone. The app only asks for the Internet permission for this.
+**Fully offline.** Fliq has no Internet permission and no server: every conversion runs on the phone.
+Office files are drawn by Fliq's own small renderer on top of Android's text engine (so Tamil and other scripts
+shape correctly), and PDF to Word uses Fliq's own PDF text reader and .docx writer. That keeps the APK tiny, but it is
+a light renderer, not Microsoft Office or LibreOffice:
+
+- Word: headings, bold/italic/underline, sizes, colours, alignment, bullets, tables, pictures. No headers/footers, text boxes, real list numbering or exact page layout.
+- Excel: every visible sheet as a table (stored results, dates converted); no charts, merged cells or cell colours. Up to 5000 rows and 40 columns per sheet.
+- PowerPoint: text, pictures, filled shapes and simple tables at their slide positions. No theme backgrounds, charts, SmartArt, animations.
+- PDF to Word: text only, in reading order, paragraphs rebuilt. No images, tables or columns; scanned PDFs (no text) and password-protected PDFs are refused with a message.
+- Old binary formats (.doc, .xls, .ppt), ODF and RTF are not supported.
+- Output is limited to 200 pages per file.
 
 **Several files at once:** select many files, share them to Fliq and pick one format. Mixed selections work too:
 images, PDFs and Office files together can all be converted to PNG, JPG or WebP. A file that fails is reported
@@ -57,7 +65,7 @@ Pushing a tag builds a signed APK and publishes it on the Releases page. One-tim
    - `KEYSTORE_PASSWORD`: the keystore password
    - `KEY_ALIAS`: `fliq`
    - `KEY_PASSWORD`: the key password (same as the keystore password if you pressed Enter)
-3. Release: `git tag v0.2.0 && git push origin v0.2.0`
+3. Release: `git tag v0.3.0 && git push origin v0.3.0`
 
 ## Build
 

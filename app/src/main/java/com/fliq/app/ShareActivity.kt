@@ -100,9 +100,9 @@ class ShareActivity : Activity() {
         val targets = Converter.targetsFor(srcs)
         if (targets.isEmpty()) {
             val msg = if (srcs.size > 1 && srcs.any { it.kind == Kind.OTHER }) {
-                "Some selected files can't be converted yet. Select only images, PDF or Office files."
+                "Some selected files can't be converted yet. Select only images, PDF, docx, xlsx, pptx, csv or txt files."
             } else {
-                "No conversion for this file type yet."
+                "No conversion for this file type yet. (Old .doc/.xls/.ppt files aren't supported offline.)"
             }
             col.addView(tv(msg, 13f, MUTED))
         } else {
@@ -112,10 +112,6 @@ class ShareActivity : Activity() {
                 val views = ArrayList<View>(chunk)
                 while (views.size < 3) views.add(View(this))
                 col.addView(row(views).apply { setPadding(0, 0, 0, dp(8)) })
-            }
-            if (Converter.needsServer(srcs, targets) && !Remote.configured(this)) {
-                col.addView(tv("Word and Office conversion needs a converter server. Open Fliq to set it up.", 12f, MUTED)
-                    .apply { setPadding(0, dp(8), 0, 0) })
             }
         }
 

@@ -41,7 +41,7 @@ data class Src(val uri: Uri, val name: String, val mime: String, val size: Long,
 
     companion object {
         private val IMAGE_EXT = setOf("jpg", "jpeg", "png", "webp", "bmp", "gif", "heic", "heif", "avif")
-        private val OFFICE_EXT = setOf("doc", "docx", "odt", "rtf", "xls", "xlsx", "ods", "csv", "ppt", "pptx", "odp")
+        private val OFFICE_EXT = setOf("docx", "xlsx", "pptx", "csv", "txt")
 
         fun query(ctx: Context, uri: Uri): Src {
             var n: String? = null

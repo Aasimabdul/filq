@@ -52,4 +52,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "Fliq-${GITHUB_REF_NAME}.apk" \
             --title "Fliq ${GITHUB_REF_NAME}" \
-            --notes "Install the APK, then share any file to Fliq. Converted and renamed files are saved next to the original. Word/Excel/PowerPoint conversion needs the converter server (see server/README.md)."
+            --notes "Install the APK, then share any file to Fliq. Converted and renamed files are saved next to the original. Fully offline: no internet permission. Word/Excel/PowerPoint/CSV/text to PDF or images, and PDF to Word (text only), all run on the phone."
