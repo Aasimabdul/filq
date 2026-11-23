@@ -29,7 +29,7 @@ class MainActivity : Activity() {
 
         col.addView(label("Converter server"))
         col.addView(
-            tv("Only needed for Word / Excel / PowerPoint to PDF and PDF to Word. Images and PDF to image work offline.", 12f, MUTED)
+            tv("Only needed for Word / Excel / PowerPoint to PDF. PDF to editable Word text and image conversions work offline.", 12f, MUTED)
                 .apply { setPadding(0, 0, 0, dp(10)) }
         )
 
