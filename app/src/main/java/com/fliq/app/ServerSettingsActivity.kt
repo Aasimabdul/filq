@@ -36,12 +36,12 @@ class ServerSettingsActivity : Activity() {
             "https://your-server.example",
             Remote.url(this),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-        ).apply { id = View.generateViewId() }
+        ).apply { id = 0x00f10001 }
         val token = input(
             "Server token",
             Remote.token(this),
             InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        ).apply { id = View.generateViewId() }
+        ).apply { id = 0x00f10002 }
         val status = tv("", 13f, MUTED).apply { setPadding(0, dp(12), 0, 0) }
 
         col.addView(url, LinearLayout.LayoutParams(match, wrap))
