@@ -9,11 +9,12 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import java.io.IOException
 import java.io.OutputStream
+import java.util.Locale
 
-/** [sameDir] is false when Android did not let us write next to the original and we used the fallback folder. */
+/** [sameDir] is false when Android did not let us write next to the original folder. */
 data class Saved(val uri: Uri, val name: String, val mime: String, val where: String, val sameDir: Boolean)
 
-/** What a background job produced: the saved files, plus "name: reason" for any file that failed. */
+/** Saved outputs and per-file failures from a conversion job. */
 class JobResult(val saved: List<Saved>, val failed: List<String> = emptyList())
 
 /** Finds the folder a shared file lives in, as a MediaStore relative path like "Pictures/Screenshots/". */
@@ -48,6 +49,7 @@ object Place {
             val i = path.indexOf(marker)
             if (i >= 0) return parent(path.substring(i + marker.length))
         } catch (e: Exception) {
+            // Folder discovery is best-effort; saving falls back to Download/Fliq.
         }
         return null
     }
@@ -66,10 +68,7 @@ object Place {
 object Saver {
     const val FALLBACK = "Download/Fliq/"
 
-    /**
-     * Saves into [dir] (the original folder) when Android allows it for this file type,
-     * otherwise into Download/Fliq.
-     */
+    /** Save in the original folder when Android permits it, otherwise use Download/Fliq. */
     fun save(ctx: Context, dir: String?, name: String, mime: String, write: (OutputStream) -> Unit): Saved {
         if (!dir.isNullOrEmpty()) {
             val coll = collectionFor(dir, mime)
@@ -77,14 +76,15 @@ object Saver {
                 try {
                     return insert(ctx, coll, dir, name, mime, true, write)
                 } catch (e: IllegalArgumentException) {
+                    // Unsupported collection/path: try the fallback location.
                 } catch (e: SecurityException) {
+                    // Scoped-storage restrictions: try the fallback location.
                 }
             }
         }
         return insert(ctx, MediaStore.Downloads.EXTERNAL_CONTENT_URI, FALLBACK, name, mime, false, write)
     }
 
-    // Scoped storage only lets an app create files in certain folders per type.
     private fun collectionFor(dir: String, mime: String): Uri? {
         val top = dir.substringBefore('/')
         val media = mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
@@ -109,18 +109,55 @@ object Saver {
             put(MediaStore.MediaColumns.RELATIVE_PATH, if (dir.endsWith("/")) dir else "$dir/")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val uri = r.insert(coll, v) ?: throw IOException("Cannot create file")
+        val uri = r.insert(coll, v) ?: throw IOException("Cannot create output file")
         try {
-            (r.openOutputStream(uri) ?: throw IOException("Cannot write file")).buffered().use { write(it) }
+            (r.openOutputStream(uri) ?: throw IOException("Cannot write output file")).buffered().use { write(it) }
+            validateOutput(ctx, uri, mime)
             r.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         } catch (e: Throwable) {
             try {
                 r.delete(uri, null, null)
-            } catch (x: Exception) {
+            } catch (_: Exception) {
             }
             throw e
         }
         return Saved(uri, nameOf(ctx, uri) ?: name, mime, dir.trimEnd('/'), sameDir)
+    }
+
+    /**
+     * Reject empty output and check the file signature for formats this app generates.
+     * This is a lightweight corruption guard, not a substitute for opening the file in a reader.
+     */
+    private fun validateOutput(ctx: Context, uri: Uri, mime: String) {
+        val prefix = (ctx.contentResolver.openInputStream(uri)
+            ?: throw IOException("Output validation failed: file cannot be read")).use { input ->
+            val bytes = ByteArray(16)
+            var count = 0
+            while (count < bytes.size) {
+                val n = input.read(bytes, count, bytes.size - count)
+                if (n <= 0) break
+                count += n
+            }
+            if (count == 0) throw IOException("Output validation failed: the file is empty")
+            bytes.copyOf(count)
+        }
+
+        fun starts(vararg expected: Int): Boolean =
+            prefix.size >= expected.size && expected.indices.all { (prefix[it].toInt() and 0xff) == expected[it] }
+
+        val valid = when (mime.lowercase(Locale.ROOT)) {
+            "application/pdf" -> prefix.size >= 5 && String(prefix, 0, 5, Charsets.US_ASCII) == "%PDF-"
+            "image/jpeg" -> starts(0xff, 0xd8, 0xff)
+            "image/png" -> starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+            "image/webp" -> prefix.size >= 12 &&
+                String(prefix, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+                String(prefix, 8, 4, Charsets.US_ASCII) == "WEBP"
+            "image/bmp" -> starts(0x42, 0x4d)
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ->
+                starts(0x50, 0x4b, 0x03, 0x04)
+            else -> true // Unknown/rename-only formats still must be non-empty.
+        }
+        if (!valid) throw IOException("Output validation failed: the file does not match $mime")
     }
 
     private fun nameOf(ctx: Context, uri: Uri): String? = try {
