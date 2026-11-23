@@ -1,0 +1,1 @@
+Lightweight offline file converter with batch images, PDF tools and file renaming.
