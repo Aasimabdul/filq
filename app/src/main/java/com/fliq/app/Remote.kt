@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-/** Talks to the Fliq converter server (see /server). Used only for Office document -> PDF conversions; PDF -> Word is handled offline. */
+/** Talks to the Fliq converter server (see /server). Used only for legacy Word, Excel, and PowerPoint -> PDF conversions; DOCX -> PDF and PDF -> Word are handled offline. */
 object Remote {
     private const val PREFS = "fliq"
 
