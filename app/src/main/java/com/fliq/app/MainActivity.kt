@@ -2,14 +2,13 @@ package com.fliq.app
 
 import android.app.Activity
 import android.os.Bundle
-import android.text.InputType
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
 /**
- * No real home screen: Fliq lives in the share sheet.
- * This only explains that, and holds the optional converter-server settings.
+ * Fliq home screen: simple usage instructions only.
+ * No API keys, server URL, or token entry is shown here.
  */
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,67 +20,29 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(28), dp(20), dp(28))
         }
+
         col.addView(tv("Fliq", 30f, ACCENT, true))
         col.addView(
-            tv("Share any file to Fliq.\nConvert or rename it in one tap.\nThe result is saved next to the original.", 14f, MUTED)
-                .apply { setPadding(0, dp(12), 0, 0) }
+            tv("Your simple file converter", 16f, NEON, true)
+                .apply { setPadding(0, dp(4), 0, dp(12)) }
         )
-
-        col.addView(label("Converter server"))
         col.addView(
-            tv("Only needed for legacy .doc/.ppt and spreadsheet conversions. DOCX/PPTX to PDF and PDF to editable Word text work offline.", 12f, MUTED)
-                .apply { setPadding(0, 0, 0, dp(10)) }
+            tv(
+                "HOW TO USE\n\n1. Open Files or your file manager.\n2. Select the file you want to convert.\n3. Tap Share or Open with, then choose Fliq.\n4. Choose the conversion and save the result.\n\nOFFLINE CONVERSIONS\n\n• DOCX (Word) → PDF\n• PPTX (PowerPoint) → PDF\n• PDF → Word (DOCX, selectable text only)\n• Supported image conversions\n\nPRIVACY\n\nThese listed conversions run on your phone. Your file is not uploaded to a conversion server.\n\nLIMITATIONS\n\nPDF-to-Word and PPTX-to-PDF are text-first conversions; original layout, images, charts, and formatting may not be preserved. Scanned PDFs need OCR, which is not included. Legacy .doc/.ppt and spreadsheet conversions are not currently available as fully offline conversions.",
+                14f,
+                MUTED
+            ).apply { setPadding(0, dp(4), 0, dp(12)) }
         )
-
-        val url = input("https://your-server.run.app", Remote.url(this),
-            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI)
-        val token = input("Token", Remote.token(this),
-            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        val status = tv("", 13f, MUTED).apply { setPadding(0, dp(12), 0, 0) }
-
-        col.addView(url, LinearLayout.LayoutParams(match, wrap))
-        col.addView(token, LinearLayout.LayoutParams(match, wrap).apply { topMargin = dp(10) })
-
-        val test = pill("Test") {
-            val u = url.text.toString()
-            val t = token.text.toString()
-            status.setTextColor(MUTED)
-            status.text = "Checking… the first try can take a minute"
-            Thread {
-                val r = Remote.ping(u, t)
-                runOnUiThread {
-                    if (!isDestroyed) {
-                        status.setTextColor(if (r == "Server OK") NEON else ERR)
-                        status.text = r
-                    }
-                }
-            }.start()
-        }
-        val save = pill("Save", filled = true) {
-            val u = url.text.toString().trim()
-            if (u.isNotEmpty() && !u.startsWith("https://")) {
-                status.setTextColor(ERR)
-                status.text = "Use an https:// address"
-                return@pill
-            }
-            Remote.save(this, u, token.text.toString())
-            status.setTextColor(NEON)
-            status.text = "Saved"
-        }
-        val buttons = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(12), 0, 0)
-            addView(test, LinearLayout.LayoutParams(0, wrap, 1f).apply { marginEnd = dp(8) })
-            addView(save, LinearLayout.LayoutParams(0, wrap, 1f))
-        }
-        col.addView(buttons)
-        col.addView(status)
+        col.addView(
+            tv("No API key or server setup is needed for the offline conversions listed above.", 13f, NEON, true)
+                .apply { setPadding(0, dp(8), 0, 0) }
+        )
 
         setContentView(ScrollView(this).apply {
             setBackgroundColor(BG)
             clipToPadding = false
             isFillViewport = true
-            addView(col)
+            addView(col, ViewGroup.LayoutParams(match, wrap))
             applyInsets(this)
         })
     }
