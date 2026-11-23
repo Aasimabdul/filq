@@ -114,7 +114,7 @@ class ShareActivity : Activity() {
                 col.addView(row(views).apply { setPadding(0, 0, 0, dp(8)) })
             }
             if (Converter.needsServer(srcs) && !Remote.configured(this)) {
-                col.addView(tv("Legacy Office conversions need a converter server. DOCX to PDF and PDF to Word work offline.", 12f, MUTED)
+                col.addView(tv("Legacy .doc/.ppt and spreadsheet conversions need a server. DOCX/PPTX to PDF and PDF to Word work offline.", 12f, MUTED)
                     .apply { setPadding(0, dp(8), 0, 0) })
             }
         }
