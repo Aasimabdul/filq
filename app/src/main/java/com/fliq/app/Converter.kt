@@ -62,7 +62,7 @@ object Converter {
 
     /** True when some of the offered conversions go through the converter server. */
     fun needsServer(srcs: List<Src>, targets: List<Target>): Boolean =
-        srcs.any { it.kind == Kind.OFFICE } || Target.DOCX in targets
+        srcs.any { it.kind == Kind.OFFICE }
 
     /** One PDF from several files is only offered when every file is an image or SVG. */
     fun canMerge(srcs: List<Src>): Boolean =
@@ -118,7 +118,7 @@ object Converter {
             }
             Kind.PDF ->
                 if (t == Target.DOCX) {
-                    listOf(Saver.save(ctx, s.dir, s.base + ".docx", t.mime) { os -> Remote.convert(ctx, s, "docx", os) })
+                    listOf(Saver.save(ctx, s.dir, s.base + ".docx", t.mime) { os -> PdfToWord.convert(ctx, s, os) })
                 } else {
                     pdfToImages(ctx, s, t, progress)
                 }
