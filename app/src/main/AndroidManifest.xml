@@ -17,6 +17,11 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".ServerSettingsActivity"
+            android:exported="false"
+            android:label="Fliq server settings"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".ViewImportActivity"
             android:exported="true"
             android:excludeFromRecents="true"
