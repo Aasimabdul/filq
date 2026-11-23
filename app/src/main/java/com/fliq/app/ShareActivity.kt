@@ -2,6 +2,7 @@ package com.fliq.app
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -9,9 +10,11 @@ import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.text.TextUtils
-import android.view.ViewGroup
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -24,6 +27,8 @@ class ShareActivity : Activity() {
     private val io = Executors.newSingleThreadExecutor()
     private var srcs: List<Src> = emptyList()
     private lateinit var status: LinearLayout
+    private lateinit var scroll: ScrollView
+    private val actions = ArrayList<View>()   // buttons that are dimmed while a job runs
     private var nameField: EditText? = null
     private var busy = false
 
@@ -51,7 +56,17 @@ class ShareActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(20), dp(20), dp(28))
         }
-        col.addView(tv("Fliq", 15f, ACCENT, true))
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(tv("Fliq", 15f, ACCENT, true), LinearLayout.LayoutParams(0, WRAP, 1f))
+        header.addView(tv("Close", 13f, MUTED).apply {
+            setPadding(dp(12), dp(8), 0, dp(8))
+            isClickable = true
+            setOnClickListener { finish() }
+        })
+        col.addView(header)
 
         if (srcs.size == 1) {
             val s = srcs[0]
@@ -91,8 +106,8 @@ class ShareActivity : Activity() {
             }
             col.addView(tv(msg, 13f, MUTED))
         } else {
-            val buttons = targets.map { t -> pill(t.label) { convert(t) } }.toMutableList()
-            if (Converter.canMerge(srcs)) buttons.add(pill("Merge PDF") { convert(Target.PDF, true) })
+            val buttons = targets.map { t -> act(pill(t.label) { convert(t) }) }.toMutableList()
+            if (Converter.canMerge(srcs)) buttons.add(act(pill("Merge PDF") { convert(Target.PDF, true) }))
             buttons.chunked(3).forEach { chunk ->
                 val views = ArrayList<View>(chunk)
                 while (views.size < 3) views.add(View(this))
@@ -107,9 +122,9 @@ class ShareActivity : Activity() {
         // Rename
         col.addView(sectionLabel("Rename"))
         col.addView(row(listOf(
-            pill("Clean") { rename { s, _ -> Renamer.clean(s.base) } },
-            pill("snake_case") { rename { s, _ -> Renamer.snake(s.base) } },
-            pill("Date + name") { rename { s, _ -> Renamer.dated(s.base) } }
+            act(pill("Clean") { rename { s, _ -> Renamer.clean(s.base) } }),
+            act(pill("snake_case") { rename { s, _ -> Renamer.snake(s.base) } }),
+            act(pill("Date + name") { rename { s, _ -> Renamer.dated(s.base) } })
         )))
 
         val field = EditText(this).apply {
@@ -121,6 +136,14 @@ class ShareActivity : Activity() {
             maxLines = 1
             inputType = InputType.TYPE_CLASS_TEXT
             imeOptions = EditorInfo.IME_ACTION_DONE
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    saveCustom()
+                    true
+                } else {
+                    false
+                }
+            }
             setPadding(dp(14), dp(12), dp(14), dp(12))
             background = GradientDrawable().apply {
                 cornerRadius = dp(10).toFloat()
@@ -139,17 +162,32 @@ class ShareActivity : Activity() {
         if (hint.isNotEmpty()) col.addView(tv(hint, 12f, MUTED).apply { setPadding(dp(2), dp(6), 0, 0) })
 
         col.addView(
-            pill("Save with this name", filled = true) { saveCustom() },
+            act(pill("Save with this name", filled = true) { saveCustom() }),
             LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(10) }
         )
 
-        return ScrollView(this).apply {
+        scroll = ScrollView(this).apply {
             setBackgroundColor(BG)
             clipToPadding = false
             isFillViewport = true
             addView(col)
             applyInsets(this)
         }
+        return scroll
+    }
+
+    private fun act(v: TextView): TextView {
+        actions.add(v)
+        return v
+    }
+
+    private fun setBusy(b: Boolean) {
+        actions.forEach { it.alpha = if (b) 0.4f else 1f }
+    }
+
+    private fun hideKeyboard() {
+        val v = currentFocus ?: return
+        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(v.windowToken, 0)
     }
 
     private fun sectionLabel(s: String): TextView = tv(s, 12f, MUTED).apply {
@@ -173,7 +211,7 @@ class ShareActivity : Activity() {
         startJob("Converting") { progress -> Converter.convert(this, srcs, t, merge, progress) }
 
     private fun rename(newBase: (Src, Int) -> String) =
-        startJob("Saving") { _ -> JobResult(Renamer.renameAll(this, srcs, newBase)) }
+        startJob("Saving") { _ -> Renamer.renameAll(this, srcs, newBase) }
 
     private fun saveCustom() {
         val base = nameField?.text?.toString()?.trim().orEmpty()
@@ -188,6 +226,9 @@ class ShareActivity : Activity() {
     private fun startJob(label: String, job: ((Int, Int) -> Unit) -> JobResult) {
         if (busy) return
         busy = true
+        hideKeyboard()
+        setBusy(true)
+        scroll.smoothScrollTo(0, 0)
         showWorking(label, 0, 0)
         io.execute {
             var items: JobResult? = null
@@ -204,6 +245,8 @@ class ShareActivity : Activity() {
             runOnUiThread {
                 busy = false
                 if (!isDestroyed) {
+                    setBusy(false)
+                    scroll.smoothScrollTo(0, 0)
                     when {
                         result == null -> showError(message ?: "Something went wrong")
                         result.saved.isNotEmpty() -> showDone(result.saved, result.failed)
@@ -236,7 +279,7 @@ class ShareActivity : Activity() {
     private fun showDone(items: List<Saved>, failed: List<String>) {
         status.removeAllViews()
         val first = items.first()
-        status.addView(tv("Saved · ${first.where}", 13f, NEON))
+        status.addView(tv("Saved in ${first.where}", 13f, NEON))
         if (!first.sameDir) {
             status.addView(tv("Couldn't save next to the original here, so it went to ${first.where}.", 12f, MUTED))
         }

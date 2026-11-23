@@ -29,7 +29,7 @@ object Remote {
         try {
             c.requestMethod = "POST"
             c.doOutput = true
-            c.connectTimeout = 20_000
+            c.connectTimeout = 60_000
             c.readTimeout = 240_000
             c.setRequestProperty("Content-Type", "application/octet-stream")
             c.setRequestProperty("X-Filename", URLEncoder.encode(s.name, "UTF-8"))
@@ -53,7 +53,7 @@ object Remote {
         return try {
             val c = URL("$base/check").openConnection() as HttpURLConnection
             try {
-                c.connectTimeout = 20_000
+                c.connectTimeout = 60_000
                 c.readTimeout = 90_000
                 c.setRequestProperty("X-Token", token.trim())
                 when (c.responseCode) {

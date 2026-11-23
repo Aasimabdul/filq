@@ -36,17 +36,32 @@ object Renamer {
     fun dated(base: String): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) + " " + clean(base)
 
-    /** Saves a renamed copy of every file next to the original. */
-    fun renameAll(ctx: Context, srcs: List<Src>, newBase: (Src, Int) -> String): List<Saved> =
-        srcs.mapIndexed { i, s ->
+    /**
+     * Saves a renamed copy of every file next to the original.
+     * Files that already have that name are skipped, and one failing file doesn't stop the rest.
+     */
+    fun renameAll(ctx: Context, srcs: List<Src>, newBase: (Src, Int) -> String): JobResult {
+        val saved = ArrayList<Saved>()
+        val failed = ArrayList<String>()
+        srcs.forEachIndexed { i, s ->
             val base = sanitize(newBase(s, i)).ifEmpty { s.base }
             val name = if (s.ext.isEmpty()) base else base + "." + s.ext
+            if (name == s.name) {
+                failed += s.name + ": already has this name"
+                return@forEachIndexed
+            }
             val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(s.ext.lowercase(Locale.ROOT))
                 ?: s.mime.takeIf { it.isNotBlank() && !it.endsWith("/*") }
                 ?: "application/octet-stream"
-            Saver.save(ctx, s.dir, name, mime) { os ->
-                (ctx.contentResolver.openInputStream(s.uri) ?: throw IOException("Cannot open file"))
-                    .use { it.copyTo(os) }
+            try {
+                saved += Saver.save(ctx, s.dir, name, mime) { os ->
+                    (ctx.contentResolver.openInputStream(s.uri) ?: throw IOException("Cannot open file"))
+                        .use { it.copyTo(os) }
+                }
+            } catch (e: Exception) {
+                failed += s.name + ": " + (e.message ?: "failed")
             }
         }
+        return JobResult(saved, failed)
+    }
 }

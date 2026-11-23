@@ -84,7 +84,9 @@ fun Context.pill(label: String, filled: Boolean = false, onClick: () -> Unit): T
 fun applyInsets(v: View) {
     v.setOnApplyWindowInsetsListener { view, ins ->
         if (Build.VERSION.SDK_INT >= 30) {
-            val i = ins.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            val i = ins.getInsets(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime()
+            )
             view.setPadding(i.left, i.top, i.right, i.bottom)
         } else {
             view.setPadding(

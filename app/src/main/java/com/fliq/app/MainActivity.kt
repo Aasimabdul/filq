@@ -58,7 +58,13 @@ class MainActivity : Activity() {
             }.start()
         }
         val save = pill("Save", filled = true) {
-            Remote.save(this, url.text.toString(), token.text.toString())
+            val u = url.text.toString().trim()
+            if (u.isNotEmpty() && !u.startsWith("https://")) {
+                status.setTextColor(ERR)
+                status.text = "Use an https:// address"
+                return@pill
+            }
+            Remote.save(this, u, token.text.toString())
             status.setTextColor(NEON)
             status.text = "Saved"
         }
