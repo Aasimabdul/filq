@@ -12,7 +12,8 @@
 
 | Input | Available output formats |
 |---|---|
-| JPG/JPEG, PNG, WebP, BMP, GIF, HEIC | JPG, PNG, WebP, BMP, PDF (decoder support varies by Android version and file) |
+| JPG/JPEG/JPE/JFIF, PNG, WebP, BMP, GIF, HEIC/HEIF, AVIF | JPG, PNG, WebP, BMP, PDF (decoder support varies by Android version and file; GIF is converted from its first frame) |
+| SVG | JPG, PNG, WebP, BMP, PDF |
 | SVG | JPG, PNG, WebP, BMP, PDF |
 | PDF | PNG, JPG, WebP (one image per page), Word/DOCX (selectable text only) |
 | Word DOCX | PDF (offline, text-first) |
