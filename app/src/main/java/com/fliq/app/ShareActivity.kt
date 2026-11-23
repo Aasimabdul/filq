@@ -113,7 +113,7 @@ class ShareActivity : Activity() {
                 while (views.size < 3) views.add(View(this))
                 col.addView(row(views).apply { setPadding(0, 0, 0, dp(8)) })
             }
-            if (Converter.needsServer(srcs, targets) && !Remote.configured(this)) {
+            if (Converter.needsServer(srcs) && !Remote.configured(this)) {
                 col.addView(tv("Word and Office conversion needs a converter server. Open Fliq to set it up.", 12f, MUTED)
                     .apply { setPadding(0, dp(8), 0, 0) })
             }
