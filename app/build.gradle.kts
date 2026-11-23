@@ -49,6 +49,7 @@ android {
 }
 
 dependencies {
-    // Only dependency: tiny SVG renderer. No AndroidX, no Compose, no coroutines -> small APK, low RAM.
+    // Small native SVG renderer and local PDF text extraction (no network conversion).
     implementation("com.caverock:androidsvg-aar:1.4")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }

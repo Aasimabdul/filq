@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071426">
+  <title>Fliq — Free, Open-Source File Converter for Android</title>
+  <meta name="description" content="Fliq is a lightweight, open-source Android file converter. Convert images, PDF pages, and supported Office documents, batch-convert multiple files to one format, merge images into PDF, and rename files.">
+  <meta name="keywords" content="Fliq, Android file converter, offline image converter, JPG PNG WebP BMP, PDF to Word, DOCX to PDF, PPTX to PDF, batch image conversion, open source Android app">
+  <link rel="canonical" href="https://aasimabdul.github.io/filq/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Fliq — Free, Open-Source File Converter for Android">
+  <meta property="og:description" content="A lightweight Android file converter with batch image conversion, local processing, PDF tools, and file renaming.">
+  <meta property="og:url" content="https://aasimabdul.github.io/filq/">
+  <meta property="og:image" content="https://github.com/Aasimabdul/filq/raw/main/docs/icon.svg">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Fliq — File Converter for Android">
+  <meta name="twitter:description" content="Lightweight, open-source Android file conversion with batch image support.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Fliq",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Android 10 and later",
+    "description": "A lightweight, open-source Android file converter for images, PDF pages, text-first Office conversions, batch conversion, PDF merging, and file renaming.",
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    "isAccessibleForFree": true,
+    "codeRepository": "https://github.com/Aasimabdul/filq"
+  }
+  </script>
+  <style>
+    :root { color-scheme: dark; --bg:#071426; --panel:#0d2038; --line:#203956; --text:#edf5ff; --muted:#b3c4d8; --cyan:#55d9ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:radial-gradient(ellipse at top,#102d4b 0,var(--bg) 55%); color:var(--text); font:16px/1.65 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    main { width:min(900px,100%); margin:auto; padding:clamp(20px,5vw,56px); }
+    header { padding:26px 0 30px; }
+    .mark { display:inline-block; font-size:13px; letter-spacing:.15em; font-weight:700; color:var(--cyan); }
+    h1 { font-size:clamp(2.3rem,7vw,4.2rem); line-height:1.08; margin:12px 0; letter-spacing:-.04em; }
+    h2 { font-size:1.3rem; margin:0 0 10px; }
+    p, li { color:var(--muted); }
+    .lead { font-size:1.15rem; max-width:700px; }
+    nav { display:flex; flex-wrap:wrap; gap:12px; margin:24px 0; }
+    a { color:var(--cyan); }
+    .button { display:inline-block; padding:11px 16px; border:1px solid #3e88a9; border-radius:12px; text-decoration:none; font-weight:650; }
+    .primary { background:var(--cyan); color:#061321; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr)); gap:14px; margin:24px 0; }
+    section, .feature { border:1px solid var(--line); background:rgba(13,32,56,.8); border-radius:16px; padding:20px; }
+    section { margin-top:16px; }
+    ul { padding-left:22px; }
+    footer { border-top:1px solid var(--line); margin-top:32px; padding-top:20px; font-size:.9rem; color:var(--muted); }
+    :focus-visible { outline:3px solid var(--cyan); outline-offset:3px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="mark">OPEN SOURCE · ANDROID · LIGHTWEIGHT</span>
+    <h1>Meet Fliq.</h1>
+    <p class="lead">A lightweight, open-source file converter for Android. Convert supported images and documents, batch-convert multiple files to one format, merge images into a PDF, and rename files without changing the originals.</p>
+    <nav aria-label="Main links">
+      <a class="button primary" href="https://github.com/Aasimabdul/filq">View source on GitHub</a>
+      <a class="button" href="https://github.com/Aasimabdul/filq/releases">Releases and APKs</a>
+      <a class="button" href="https://github.com/Aasimabdul/filq/blob/main/README.md">Full documentation</a>
+    </nav>
+    <p>Minimum Android version: Android 10 (API 29). Built with low-memory devices in mind.</p>
+  </header>
+
+  <div class="grid">
+    <article class="feature"><h2>Image conversion</h2><p>Convert supported JPG/JPEG, PNG, WebP, BMP, GIF, HEIC and SVG files to JPG, PNG, WebP, BMP or PDF. Decoder support depends on the file and Android version.</p></article>
+    <article class="feature"><h2>Batch conversion</h2><p>Select multiple files, choose one common output format, and let Fliq process them one at a time. One failed file does not have to stop the rest.</p></article>
+    <article class="feature"><h2>PDF tools</h2><p>Render PDF pages to PNG, JPG or WebP. Extract selectable PDF text into DOCX. Scanned PDFs need OCR, which is not included.</p></article>
+    <article class="feature"><h2>Office to PDF</h2><p>DOCX and PPTX can be converted locally using text-first extraction. Legacy Office and spreadsheet conversion requires a separately configured server.</p></article>
+    <article class="feature"><h2>Merge and rename</h2><p>Merge multiple selected images into one PDF, or rename copies using Clean, snake_case, Date + name, or a custom name.</p></article>
+    <article class="feature"><h2>Privacy-minded</h2><p>Listed local conversions run on the device. If you configure the optional conversion server, files sent for server conversion leave the device and are handled by that server.</p></article>
+  </div>
+
+  <section>
+    <h2>Honest about conversion quality</h2>
+    <p>Fliq prioritizes a small footprint and local processing, not full desktop-office fidelity. PDF-to-Word, DOCX-to-PDF and PPTX-to-PDF are text-first: original page layouts, images, charts, tables, fonts and animations may not be preserved. Always check the output before relying on it.</p>
+  </section>
+  <section>
+    <h2>Free and open source</h2>
+    <p>Fliq is distributed under the GNU General Public License v3.0. You can inspect the source, report issues, and contribute improvements.</p>
+    <ul>
+      <li><a href="https://github.com/Aasimabdul/filq/blob/main/LICENSE">GPL-3.0 license</a></li>
+      <li><a href="https://github.com/Aasimabdul/filq/blob/main/PRIVACY.md">Privacy notes</a></li>
+      <li><a href="https://github.com/Aasimabdul/filq/blob/main/SECURITY.md">Security policy</a></li>
+      <li><a href="https://github.com/Aasimabdul/filq/blob/main/CONTRIBUTING.md">Contributing guide</a></li>
+      <li><a href="https://github.com/Aasimabdul/filq/issues">Report a bug or request a feature</a></li>
+    </ul>
+  </section>
+  <footer>
+    <p>Fliq is an independent open-source project. Google indexing and search ranking are controlled by search engines and are not guaranteed. Do not install unofficial builds from untrusted sources.</p>
+    <p>Source code and project status: <a href="https://github.com/Aasimabdul/filq">github.com/Aasimabdul/filq</a></p>
+  </footer>
+</main>
+</body>
+</html>

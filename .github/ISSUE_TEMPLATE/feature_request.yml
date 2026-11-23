@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest an improvement to Fliq
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Offline, privacy, memory, tablet or landscape considerations
+      description: Mention any performance or compatibility constraints.
+    validations:
+      required: false

@@ -1,0 +1,22 @@
+Fliq is a lightweight, open-source file converter for Android. Share a file—or multiple files—to Fliq, then choose an output format available for your selection.
+
+FEATURES
+• Convert supported JPG/JPEG, PNG, WebP, BMP, GIF, HEIC and SVG images to JPG, PNG, WebP, BMP or PDF.
+• Convert PDF pages to PNG, JPG or WebP.
+• Merge multiple selected images into one PDF.
+• Extract selectable PDF text into a Word/DOCX document.
+• Convert DOCX Word and PPTX PowerPoint to PDF using on-device text extraction.
+• Batch-convert multiple files to one common output format.
+• Rename files using Clean, snake_case, Date + name, or a custom name.
+• Save converted and renamed copies without changing the original file.
+• Free and open-source under GPL-3.0.
+
+PRIVACY
+Supported local conversions run on your Android device. Legacy Office and spreadsheet conversions require a separately configured conversion server; files sent to that server leave the device.
+
+LIMITATIONS
+PDF-to-Word extracts selectable text only; scanned PDFs need OCR, which is not included. DOCX/PPTX-to-PDF is text-first and may not preserve original layouts, images, tables, charts, fonts, or animations. Support varies by file and Android version.
+
+Minimum Android version: Android 10 (API 29).
+
+Source code and issue tracker: https://github.com/Aasimabdul/filq
