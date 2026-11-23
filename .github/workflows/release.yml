@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.2.0 to build a signed APK and publish it on the Releases page.
+# A signed release is published only when a maintainer pushes a version tag (for example v0.2.0).
 on:
   push:
     tags: ['v*']
@@ -8,48 +8,76 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: fliq-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out tagged source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Decode keystore
+      - name: Validate signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Required repository secret $name is missing. See the Release signing section in README.md."
+              exit 1
+            fi
+          done
+
+      - name: Decode signing key
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "::error::Secret KEYSTORE_B64 is missing. See 'Releasing' in the README."
-            exit 1
-          fi
-          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/fliq.jks"
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/fliq-release.jks"
+          test -s "$RUNNER_TEMP/fliq-release.jks"
 
       - name: Build signed release APK
         env:
-          KEYSTORE_PATH: ${{ runner.temp }}/fliq.jks
+          KEYSTORE_PATH: ${{ runner.temp }}/fliq-release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease --no-daemon
 
-      - name: Name and verify the APK
+      - name: Verify APK signature and create checksum
+        shell: bash
         run: |
-          cp app/build/outputs/apk/release/app-release.apk "Fliq-${GITHUB_REF_NAME}.apk"
-          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --print-certs "Fliq-${GITHUB_REF_NAME}.apk"
-          ls -l "Fliq-${GITHUB_REF_NAME}.apk"
+          set -euo pipefail
+          apk="Fliq-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$apksigner"
+          "$apksigner" verify --verbose --print-certs "$apk"
+          sha256sum "$apk" > "$apk.sha256"
+          ls -lh "$apk" "$apk.sha256"
 
-      - name: Publish release
+      - name: Publish release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "Fliq-${GITHUB_REF_NAME}.apk" \
+          gh release create "$GITHUB_REF_NAME" \
+            "Fliq-${GITHUB_REF_NAME}.apk" \
+            "Fliq-${GITHUB_REF_NAME}.apk.sha256" \
+            --verify-tag \
             --title "Fliq ${GITHUB_REF_NAME}" \
-            --notes "Install the APK, then share any file to Fliq. Converted and renamed files are saved next to the original. Word/Excel/PowerPoint conversion needs the converter server (see server/README.md)."
+            --notes "Fliq Android file converter. Review README.md for supported formats and known limitations. DOCX/PPTX to PDF and PDF to Word are text-first local conversions; legacy Office and spreadsheet conversion requires a separately configured server. Verify the APK checksum and review the release notes before installing."
