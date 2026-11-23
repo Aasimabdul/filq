@@ -1,0 +1,29 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/docker-image.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/docker-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build converter server image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build --pull --file server/Dockerfile --tag fliq-converter-server:test server
