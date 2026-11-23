@@ -69,7 +69,7 @@ object Converter {
         srcs.size > 1 && srcs.all { it.kind == Kind.IMAGE || it.kind == Kind.SVG }
 
     private fun normExt(e: String): String =
-        e.lowercase(Locale.ROOT).let { if (it == "jpeg") "jpg" else it }
+        e.lowercase(Locale.ROOT).let { if (it in setOf("jpeg", "jpe", "jfif")) "jpg" else it }
 
     private val noProgress: (Int, Int) -> Unit = { _, _ -> }
 
