@@ -56,6 +56,8 @@ If the original folder can't be found or isn't allowed (for example a PDF made f
 
 Pushing a tag builds a signed APK and publishes it on the Releases page. One-time setup:
 
+Quick way: run `./scripts/setup-release.sh` on your computer (needs `gh auth login`); it does steps 1–3 below.
+
 1. Make your own signing key and **back it up** (if you lose it you can't update the app):
    ```
    keytool -genkeypair -v -keystore fliq-release.jks -alias fliq -keyalg RSA -keysize 4096 -validity 10000
