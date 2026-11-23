@@ -84,7 +84,7 @@ object PptxToPdf {
     private fun extractSlides(file: File): List<List<String>> {
         val result = ArrayList<Pair<Int, List<String>>>()
         ZipFile(file).use { zip ->
-            val pattern = Regex("""ppt/slides/slide(\\d+)\\.xml""")
+            val pattern = Regex("""ppt/slides/slide(\d+)\.xml""")
             val entries = zip.entries()
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
